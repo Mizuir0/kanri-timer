@@ -1,0 +1,25 @@
+# Web Framework
+Django==4.2.20
+
+# Database
+psycopg2-binary==2.9.9  # PostgreSQL用
+django-redis==5.4.0     # Redis integration
+
+# Async/Real-time
+channels[daphne]==4.0.0        # WebSocket対応
+channels-redis==4.2.0          # Channels用Redis
+
+# Task Queue (サーバーサイドタイマー用)
+celery==5.3.4
+celery[redis]==5.3.4
+
+# Environment variables
+python-decouple==3.8
+
+# Development
+django-debug-toolbar==4.2.0
+django-extensions==3.2.3
+
+# Production
+gunicorn==21.2.0
+whitenoise==6.6.0       # 静的ファイル配信
