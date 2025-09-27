@@ -69,6 +69,9 @@
                         </td>
                         <td>
                             <strong>{{ timer.band.name }}</strong>
+                            {% if timer.name != timer.band.name %}
+                                <small class="text-muted d-block">{{ timer.name }}</small>
+                            {% endif %}
                         </td>
                         <td>
                             <span class="badge bg-primary">{{ timer.duration_minutes }}分</span>
@@ -121,30 +124,186 @@
 
 {% block extra_js %}
 <script>
-// 基本的なJavaScript（Phase 2でサーバーサイドタイマーと連携予定）
-document.addEventListener('DOMContentLoaded', function() {
-    const startBtn = document.getElementById('start-btn');
-    const pauseBtn = document.getElementById('pause-btn');
-    const skipBtn = document.getElementById('skip-btn');
-    const stopBtn = document.getElementById('stop-btn');
+class ServerTimerManager {
+    constructor() {
+        this.currentSessionId = null;
+        this.statusInterval = null;
+        this.init();
+    }
     
-    // 基本的なボタン制御のみ（実際の機能はPhase 2で実装）
-    startBtn.addEventListener('click', function() {
-        alert('Phase 2でサーバーサイドタイマーを実装します！');
-    });
+    init() {
+        this.bindEvents();
+        this.loadExistingSession();
+    }
     
-    // キーボードショートカット
-    document.addEventListener('keydown', function(event) {
-        if (event.code === 'Space') {
-            event.preventDefault();
-            startBtn.click();
-        } else if (event.code === 'ArrowRight') {
-            event.preventDefault();
-            if (skipBtn.disabled === false) {
-                skipBtn.click();
+    bindEvents() {
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const skipBtn = document.getElementById('skip-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        
+        startBtn.addEventListener('click', () => this.startTimer());
+        
+        // キーボードショートカット
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                this.startTimer();
+            } else if (event.code === 'ArrowRight') {
+                event.preventDefault();
+                // スキップ機能は後で実装
+                console.log('スキップ機能は開発中です');
+            }
+        });
+    }
+    
+    async startTimer() {
+        const timerRows = document.querySelectorAll('.timer-row');
+        if (timerRows.length === 0) {
+            alert('タイマーが登録されていません');
+            return;
+        }
+        
+        // 最初のタイマーを使用（後で選択機能追加予定）
+        const firstTimer = timerRows[0];
+        const timerId = firstTimer.dataset.timerId;
+        
+        try {
+            const response = await fetch('/api/start-timer/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.getCsrfToken()
+                },
+                body: JSON.stringify({
+                    timer_id: timerId
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.currentSessionId = data.session_id;
+                this.updateUI('running');
+                this.startStatusPolling();
+                
+                // 成功メッセージ表示
+                document.getElementById('current-timer').textContent = data.message;
+                
+                // ローカルストレージに保存（リロード対応）
+                localStorage.setItem('currentSessionId', this.currentSessionId);
+                
+            } else {
+                alert('エラー: ' + data.message);
+            }
+            
+        } catch (error) {
+            console.error('タイマー開始エラー:', error);
+            alert('タイマー開始に失敗しました');
+        }
+    }
+    
+    async checkTimerStatus() {
+        if (!this.currentSessionId) return;
+        
+        try {
+            const response = await fetch(`/api/timer-status/${this.currentSessionId}/`);
+            const data = await response.json();
+            
+            if (data.success && data.status.status !== 'not_found') {
+                this.updateTimerDisplay(data.status);
+            } else {
+                // セッションが見つからない場合
+                this.stopStatusPolling();
+                this.updateUI('stopped');
+            }
+            
+        } catch (error) {
+            console.error('ステータス取得エラー:', error);
+        }
+    }
+    
+    updateTimerDisplay(status) {
+        const currentTimerElement = document.getElementById('current-timer');
+        const progressBar = document.getElementById('progress-bar');
+        
+        if (status.status === 'running') {
+            const minutes = Math.floor(status.remaining_seconds / 60);
+            const seconds = status.remaining_seconds % 60;
+            currentTimerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // 進捗バー更新
+            const progress = ((status.total_seconds - status.remaining_seconds) / status.total_seconds) * 100;
+            progressBar.style.width = `${progress}%`;
+            
+        } else if (status.status === 'completed') {
+            currentTimerElement.textContent = 'タイマー完了！';
+            progressBar.style.width = '100%';
+            this.stopStatusPolling();
+            this.updateUI('completed');
+            
+            // 完了通知
+            alert('タイマーが完了しました！');
+        }
+    }
+    
+    startStatusPolling() {
+        this.statusInterval = setInterval(() => {
+            this.checkTimerStatus();
+        }, 1000); // 1秒ごとに状態チェック
+    }
+    
+    stopStatusPolling() {
+        if (this.statusInterval) {
+            clearInterval(this.statusInterval);
+            this.statusInterval = null;
+        }
+    }
+    
+    updateUI(state) {
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const skipBtn = document.getElementById('skip-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        
+        if (state === 'running') {
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+            skipBtn.disabled = false;
+            stopBtn.disabled = false;
+        } else {
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            skipBtn.disabled = true;
+            stopBtn.disabled = true;
+        }
+    }
+    
+    loadExistingSession() {
+        // ページリロード後のセッション復旧
+        const savedSessionId = localStorage.getItem('currentSessionId');
+        if (savedSessionId) {
+            this.currentSessionId = savedSessionId;
+            this.checkTimerStatus();
+            this.startStatusPolling();
+        }
+    }
+    
+    getCsrfToken() {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'csrftoken') {
+                return value;
             }
         }
-    });
+        return '';
+    }
+}
+
+// ページ読み込み完了後に初期化
+document.addEventListener('DOMContentLoaded', function() {
+    window.timerManager = new ServerTimerManager();
 });
 </script>
 {% endblock %}
