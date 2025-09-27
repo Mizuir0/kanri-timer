@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ band.name }} - タイマー一覧{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'timer_core:band_list' %}">バンド一覧</a></li>
+                <li class="breadcrumb-item active">{{ band.name }}</li>
+            </ol>
+        </nav>
+        <h1>🎵 {{ band.name }}</h1>
+        {% if band.description %}
+        <p class="text-muted">{{ band.description }}</p>
+        {% endif %}
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="/admin/timer_core/timer/add/" class="btn btn-outline-success">タイマー追加</a>
+        <a href="/admin/" class="btn btn-outline-secondary">管理画面</a>
+    </div>
+</div>
+
+{% if timers %}
+    <!-- タイマー制御パネル -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">⏰ タイマー制御</h5>
+        </div>
+        <div class="card-body text-center">
+            <div class="timer-duration mb-3" id="current-timer">
+                準備完了
+            </div>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-success btn-lg" id="start-btn">
+                    <i class="bi bi-play-fill"></i> 開始
+                </button>
+                <button type="button" class="btn btn-warning btn-lg" id="pause-btn" disabled>
+                    <i class="bi bi-pause-fill"></i> 一時停止
+                </button>
+                <button type="button" class="btn btn-info btn-lg" id="skip-btn" disabled>
+                    <i class="bi bi-skip-forward-fill"></i> スキップ
+                </button>
+                <button type="button" class="btn btn-secondary btn-lg" id="stop-btn" disabled>
+                    <i class="bi bi-stop-fill"></i> 停止
+                </button>
+            </div>
+            <div class="mt-3">
+                <small class="text-muted">スペースキー: 開始/一時停止 | →キー: スキップ</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- タイマー一覧 -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">📋 タイマー一覧 ({{ timers.count }}個)</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>順序</th>
+                        <th>タイマー名</th>
+                        <th>時間</th>
+                        <th>管理者</th>
+                        <th>状態</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for timer in timers %}
+                    <tr class="timer-row" data-timer-id="{{ timer.id }}" data-duration="{{ timer.duration_minutes }}">
+                        <td>
+                            <span class="badge bg-secondary">{{ timer.order }}</span>
+                        </td>
+                        <td>
+                            <strong>{{ timer.name }}</strong>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary">{{ timer.duration_minutes }}分</span>
+                        </td>
+                        <td>
+                            {% if timer.manager1 %}
+                                <span class="badge bg-info manager-badge me-1">{{ timer.manager1 }}</span>
+                            {% endif %}
+                            {% if timer.manager2 %}
+                                <span class="badge bg-info manager-badge me-1">{{ timer.manager2 }}</span>
+                            {% endif %}
+                            {% if timer.manager3 %}
+                                <span class="badge bg-info manager-badge">{{ timer.manager3 }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark status-badge">待機中</span>
+                        </td>
+                        <td>
+                            <a href="/admin/timer_core/timer/{{ timer.id }}/change/" class="btn btn-sm btn-outline-primary">編集</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 進捗表示 -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <h6>進捗状況</h6>
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: 0%" id="progress-bar">
+                    0 / {{ timers.count }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% else %}
+    <div class="alert alert-warning">
+        <h4>タイマーが登録されていません</h4>
+        <p>{{ band.name }}のタイマーがまだ登録されていません。</p>
+        <a href="/admin/timer_core/timer/add/" class="btn btn-primary">タイマーを追加する</a>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 基本的なJavaScript（Phase 2でサーバーサイドタイマーと連携予定）
+document.addEventListener('DOMContentLoaded', function() {
+    const startBtn = document.getElementById('start-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const skipBtn = document.getElementById('skip-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    
+    // 基本的なボタン制御のみ（実際の機能はPhase 2で実装）
+    startBtn.addEventListener('click', function() {
+        alert('Phase 2でサーバーサイドタイマーを実装します！');
+    });
+    
+    // キーボードショートカット
+    document.addEventListener('keydown', function(event) {
+        if (event.code === 'Space') {
+            event.preventDefault();
+            startBtn.click();
+        } else if (event.code === 'ArrowRight') {
+            event.preventDefault();
+            if (skipBtn.disabled === false) {
+                skipBtn.click();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
