@@ -15,7 +15,6 @@ DJANGO_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'apps.timer_core',
 ]
 
 THIRD_PARTY_APPS = [
