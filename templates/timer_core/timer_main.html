@@ -1,20 +1,12 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ band.name }} - タイマー一覧{% endblock %}
+{% block title %}バンドリハーサル管理 - タイマー{% endblock %}
 
 {% block content %}
 <div class="row mb-4">
     <div class="col-md-8">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{% url 'timer_core:band_list' %}">バンド一覧</a></li>
-                <li class="breadcrumb-item active">{{ band.name }}</li>
-            </ol>
-        </nav>
-        <h1>🎵 {{ band.name }}</h1>
-        {% if band.description %}
-        <p class="text-muted">{{ band.description }}</p>
-        {% endif %}
+        <h1>🎵 バンドリハーサル管理</h1>
+        <p class="text-muted">練習タイマーを管理します</p>
     </div>
     <div class="col-md-4 text-end">
         <a href="/admin/timer_core/timer/add/" class="btn btn-outline-success">タイマー追加</a>
@@ -62,7 +54,7 @@
                 <thead class="table-light">
                     <tr>
                         <th>順序</th>
-                        <th>タイマー名</th>
+                        <th>バンド名</th>
                         <th>時間</th>
                         <th>管理者</th>
                         <th>状態</th>
@@ -76,7 +68,7 @@
                             <span class="badge bg-secondary">{{ timer.order }}</span>
                         </td>
                         <td>
-                            <strong>{{ timer.name }}</strong>
+                            <strong>{{ timer.band.name }}</strong>
                         </td>
                         <td>
                             <span class="badge bg-primary">{{ timer.duration_minutes }}分</span>
@@ -120,8 +112,9 @@
 {% else %}
     <div class="alert alert-warning">
         <h4>タイマーが登録されていません</h4>
-        <p>{{ band.name }}のタイマーがまだ登録されていません。</p>
-        <a href="/admin/timer_core/timer/add/" class="btn btn-primary">タイマーを追加する</a>
+        <p>まずはバンドとタイマーを登録してください。</p>
+        <a href="/admin/timer_core/band/add/" class="btn btn-primary me-2">バンドを追加</a>
+        <a href="/admin/timer_core/timer/add/" class="btn btn-outline-primary">タイマーを追加</a>
     </div>
 {% endif %}
 {% endblock %}
