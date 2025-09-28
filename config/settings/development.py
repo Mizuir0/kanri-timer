@@ -2,22 +2,56 @@ from .base import *
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '*']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
-# Development tools
-INSTALLED_APPS += [
-    'django_extensions',
-]
+# ASGI Application 設定
+ASGI_APPLICATION = 'config.asgi.application'
 
-# Database (SQLite option for quick development)
-if config('USE_SQLITE', default=False, cast=bool):
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+# Django Debug Toolbar (開発時のみ)
+if DEBUG:
+    INSTALLED_APPS += ['debug_toolbar']
+    MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
+    
+    INTERNAL_IPS = [
+        '127.0.0.1',
+        '0.0.0.0',
+    ]
 
-# Celery settings for development
-CELERY_TASK_ALWAYS_EAGER = False  # Set to True for immediate execution in development
-CELERY_TASK_EAGER_PROPAGATES = True
+# ログ設定 - タスクデバッグ用
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'celery': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'apps.timer_core.tasks': {  # タスクのログを確実に表示
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
