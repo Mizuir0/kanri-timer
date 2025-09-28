@@ -39,7 +39,7 @@ def countdown_timer(self, session_id, total_seconds):
     # カウントダウン実行
     for remaining in range(total_seconds, 0, -1):
         # タスクがキャンセルされていないかチェック
-        if self.is_revoked():
+        if self.request.called:
             logger.info(f"タイマーがキャンセルされました: session_id={session_id}")
             cache.delete(cache_key)
             return "Timer cancelled"
