@@ -35,23 +35,24 @@ services:
   # Django Web App
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
+    container_name: band-timer-web
+    command: python -m daphne -b 0.0.0.0 -p 8000 config.asgi:application  # ← この行を変更
     volumes:
-      # macOS用 cached マウント（パフォーマンス向上）
-      - .:/app:cached
-      # node_modules除外（存在する場合）
-      - /app/node_modules
+      - .:/app
+      - /app/venv  # 仮想環境は除外
     ports:
       - "8000:8000"
-    env_file:
-      - .env
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - DEBUG=True
+      - DATABASE_URL=postgresql://dev_user:dev_password@db:5432/band_timer
+      - REDIS_URL=redis://redis:6379/0
+    stdin_open: true
+    tty: true
 
   # Celery Worker (バックグラウンドタスク用)
   celery:
