@@ -15,6 +15,11 @@
 </div>
 
 {% if timers %}
+    <!-- WebSocket接続状態表示（Phase 3 準備） -->
+    <div class="alert alert-info" id="connection-status">
+        WebSocket接続中...
+    </div>
+
     <!-- タイマー制御パネル -->
     <div class="card mb-4">
         <div class="card-header bg-primary text-white">
