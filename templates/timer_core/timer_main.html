@@ -128,12 +128,94 @@ class ServerTimerManager {
     constructor() {
         this.currentSessionId = null;
         this.statusInterval = null;
+        this.websocket = null;
+        this.bandId = 1; // デフォルトバンドID（後で動的に設定予定）
         this.init();
     }
     
     init() {
         this.bindEvents();
         this.loadExistingSession();
+        this.initWebSocket();
+    }
+    
+    initWebSocket() {
+        // WebSocket接続（Phase 3 準備）
+        const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const wsPath = `${wsScheme}://${window.location.host}/ws/timer/${this.bandId}/`;
+        
+        console.log('WebSocket接続試行:', wsPath);
+        
+        try {
+            this.websocket = new WebSocket(wsPath);
+            
+            this.websocket.onopen = (event) => {
+                console.log('WebSocket接続成功');
+                this.showConnectionStatus('WebSocket接続済み', 'success');
+            };
+            
+            this.websocket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log('WebSocketメッセージ受信:', data);
+                this.handleWebSocketMessage(data);
+            };
+            
+            this.websocket.onclose = (event) => {
+                console.log('WebSocket切断:', event.code);
+                this.showConnectionStatus('WebSocket切断', 'warning');
+                // 5秒後に再接続試行
+                setTimeout(() => this.initWebSocket(), 5000);
+            };
+            
+            this.websocket.onerror = (error) => {
+                console.error('WebSocketエラー:', error);
+                this.showConnectionStatus('WebSocket接続エラー', 'error');
+            };
+            
+        } catch (error) {
+            console.error('WebSocket初期化エラー:', error);
+            this.showConnectionStatus('WebSocket利用不可', 'error');
+        }
+    }
+    
+    handleWebSocketMessage(data) {
+        switch (data.type) {
+            case 'connection_established':
+                console.log('接続確立:', data.message);
+                break;
+                
+            case 'timer_update':
+                // 将来: リアルタイムタイマー更新
+                console.log('タイマー更新:', data.data);
+                break;
+                
+            case 'timer_completed':
+                // 将来: タイマー完了通知
+                console.log('タイマー完了:', data.data);
+                break;
+                
+            case 'pong':
+                console.log('ポング受信');
+                break;
+                
+            default:
+                console.log('未知のメッセージタイプ:', data);
+        }
+    }
+    
+    showConnectionStatus(message, type) {
+        // 接続状態表示（Phase 3で本格実装予定）
+        const statusElement = document.getElementById('connection-status');
+        if (statusElement) {
+            statusElement.textContent = message;
+            statusElement.className = `alert alert-${type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'danger'}`;
+        }
+    }
+    
+    sendWebSocketMessage(message) {
+        if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+            this.websocket.send(JSON.stringify(message));
+        }
     }
     
     bindEvents() {
@@ -144,6 +226,17 @@ class ServerTimerManager {
         
         startBtn.addEventListener('click', () => this.startTimer());
         
+        // WebSocketテスト用ピングボタン（開発用）
+        const pingBtn = document.getElementById('ping-btn');
+        if (pingBtn) {
+            pingBtn.addEventListener('click', () => {
+                this.sendWebSocketMessage({
+                    type: 'ping',
+                    timestamp: Date.now()
+                });
+            });
+        }
+        
         // キーボードショートカット
         document.addEventListener('keydown', (event) => {
             if (event.code === 'Space') {
@@ -151,7 +244,6 @@ class ServerTimerManager {
                 this.startTimer();
             } else if (event.code === 'ArrowRight') {
                 event.preventDefault();
-                // スキップ機能は後で実装
                 console.log('スキップ機能は開発中です');
             }
         });
@@ -164,7 +256,7 @@ class ServerTimerManager {
             return;
         }
         
-        // 最初のタイマーを使用（後で選択機能追加予定）
+        // 最初のタイマーを使用
         const firstTimer = timerRows[0];
         const timerId = firstTimer.dataset.timerId;
         
@@ -187,11 +279,15 @@ class ServerTimerManager {
                 this.updateUI('running');
                 this.startStatusPolling();
                 
-                // 成功メッセージ表示
                 document.getElementById('current-timer').textContent = data.message;
-                
-                // ローカルストレージに保存（リロード対応）
                 localStorage.setItem('currentSessionId', this.currentSessionId);
+                
+                // WebSocketでタイマー開始を通知（Phase 3用準備）
+                this.sendWebSocketMessage({
+                    type: 'timer_started',
+                    session_id: this.currentSessionId,
+                    timer_id: timerId
+                });
                 
             } else {
                 alert('エラー: ' + data.message);
@@ -213,7 +309,6 @@ class ServerTimerManager {
             if (data.success && data.status.status !== 'not_found') {
                 this.updateTimerDisplay(data.status);
             } else {
-                // セッションが見つからない場合
                 this.stopStatusPolling();
                 this.updateUI('stopped');
             }
@@ -232,7 +327,6 @@ class ServerTimerManager {
             const seconds = status.remaining_seconds % 60;
             currentTimerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             
-            // 進捗バー更新
             const progress = ((status.total_seconds - status.remaining_seconds) / status.total_seconds) * 100;
             progressBar.style.width = `${progress}%`;
             
@@ -242,7 +336,6 @@ class ServerTimerManager {
             this.stopStatusPolling();
             this.updateUI('completed');
             
-            // 完了通知
             alert('タイマーが完了しました！');
         }
     }
@@ -250,7 +343,7 @@ class ServerTimerManager {
     startStatusPolling() {
         this.statusInterval = setInterval(() => {
             this.checkTimerStatus();
-        }, 1000); // 1秒ごとに状態チェック
+        }, 1000);
     }
     
     stopStatusPolling() {
@@ -280,7 +373,6 @@ class ServerTimerManager {
     }
     
     loadExistingSession() {
-        // ページリロード後のセッション復旧
         const savedSessionId = localStorage.getItem('currentSessionId');
         if (savedSessionId) {
             this.currentSessionId = savedSessionId;
