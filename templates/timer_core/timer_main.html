@@ -269,6 +269,17 @@ class ServerTimerManager {
         const firstTimer = timerRows[0];
         const timerId = firstTimer.dataset.timerId;
         
+        // デバッグ情報追加
+        console.log('DEBUG: Timer rows found:', timerRows.length);
+        console.log('DEBUG: First timer element:', firstTimer);
+        console.log('DEBUG: Timer ID:', timerId);
+        
+        if (!timerId) {
+            alert('タイマーIDが取得できません');
+            console.error('Timer ID is undefined or null');
+            return;
+        }
+        
         try {
             const response = await fetch('/api/start-timer/', {
                 method: 'POST',
@@ -277,11 +288,12 @@ class ServerTimerManager {
                     'X-CSRFToken': this.getCsrfToken()
                 },
                 body: JSON.stringify({
-                    timer_id: timerId
+                    timer_id: parseInt(timerId)  // 数値として送信
                 })
             });
             
             const data = await response.json();
+            console.log('API Response:', data);
             
             if (data.success) {
                 this.currentSessionId = data.session_id;
@@ -300,11 +312,12 @@ class ServerTimerManager {
                 
             } else {
                 alert('エラー: ' + data.message);
+                console.error('Timer start failed:', data);
             }
             
         } catch (error) {
             console.error('タイマー開始エラー:', error);
-            alert('タイマー開始に失敗しました');
+            alert('タイマー開始に失敗しました: ' + error.message);
         }
     }
     

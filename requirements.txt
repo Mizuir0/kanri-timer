@@ -10,7 +10,6 @@ channels[daphne]==4.0.0        # WebSocket対応
 channels-redis==4.2.0          # Channels用Redis
 
 # Task Queue (サーバーサイドタイマー用)
-celery==5.3.4
 celery[redis]==5.3.4
 
 # Environment variables
